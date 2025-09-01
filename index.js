@@ -1,0 +1,74 @@
+(()=>{
+    var pageInfo = {}
+    var events = []
+    var script = document.currentScript 
+    var siteId = script.getAttribute('data-site')
+    var excludeDomains = script.getAttribute('data-exclude-domains')
+
+    function isTrackingEnabled() {
+        const { hostname, pathname } = window.location
+        return pathname && hostname && siteId && !excludeDomains.includes(hostname)
+    }
+
+    if (void 0 !== history) {
+        const searchParams = new URLSearchParams(window.location.search)
+        const searchParamsObj = Object.fromEntries(searchParams)
+        pageInfo = {
+          host: window.location.hostname,
+          path: window.location.pathname,
+          ...(document.referrer && { referer: document.referrer }),
+          ...searchParamsObj,
+        }
+        historyBasedTracking()
+      } else {
+        console.warn(
+          'History API not supported. Tracking may not work as expected.',
+        )
+      }
+
+      const historyBasedTracking = () => {
+        if (history) {
+
+  
+          const originalPushState = history.pushState
+          history.pushState = function (...args) {
+            const result = originalPushState.apply(history, args)
+            window.dispatchEvent(new Event('pushstate'))
+            window.dispatchEvent(new Event('location-change'))
+            return result
+          }
+  
+          window.addEventListener('popstate', () => {
+            window.dispatchEvent(new Event('location-change'))
+          })
+  
+          window.addEventListener('location-change', () => {
+            const navigationTiming = performance.getEntriesByType('navigation')[0]
+            const timeSpent = (performance.now() - navigationTiming.domContentLoadedEventEnd) / 1000
+  
+            const searchParams = new URLSearchParams(window.location.search)
+            const searchParamsObj = Object.fromEntries(searchParams)
+            events.push([
+              'page_view',
+              {
+                ...pageInfo,
+                timestamp: Date.now(),
+                viewport_height: document.documentElement.scrollHeight,
+                viewport_width: document.documentElement.clientWidth,
+              },
+            ])
+            setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0)
+            events.length = 0
+            pageInfo = {
+              host: window.location.hostname,
+              path: window.location.pathname,
+              ...(document.referrer && { referer: document.referrer }),
+              ...searchParamsObj,
+            }
+            initializeScrollDepth()
+            embedScripts()
+          })
+        }
+      }
+
+})()
