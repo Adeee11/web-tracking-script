@@ -22,7 +22,7 @@
     data.cid = Math.floor(1e8 * Math.random()) + 1;
     data.sid = siteId;
     const searchParams = new URLSearchParams(data).toString();
-    const url = "__BASE_URL__" + "?" + searchParams;
+    const url = "https://web-track-worker.adarshdeep.workers.dev" + "?" + searchParams;
 
     navigator.sendBeacon(url);
   }

@@ -140,7 +140,7 @@ export default {
 
 		// Handle GET request to root path
 		if (method === 'GET' && new URL(url).pathname === '/') {
-			return Response.redirect('https://userbird.com/', 301);
+			return Response.redirect('https://iwebcode.design/', 301);
 		}
 
 		// Check if it's a request for common browser assets
