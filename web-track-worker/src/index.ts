@@ -209,10 +209,15 @@ export default {
 		}
 		const access_token = await generateBQAccessToken(env)
 		if(await isTableExists(env,access_token,site_id)){
+			console.log("TABLE EXISTS ... PROCEEDING TO ADD DATA")
 			await addData(request,env,access_token,site_id,payloadArr)
 		}else{
+			console.log("TABLE DOES NOT EXIST ... PROCEEDING TO CREATE TABLE")
 			if(await createTable(env,access_token,site_id)){
+				console.log("TABLE CREATED ...")
 				await addData(request,env,access_token,site_id,payloadArr)
+			}else{
+				console.log("WAIT ... SOMETHING WENT WRONG WHILE CREATING TABLE")
 			}
 		}
 		return new Response('OK');
