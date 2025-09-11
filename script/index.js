@@ -3,12 +3,12 @@
   var events = [];
   var script = document.currentScript;
   var siteId = script.getAttribute("data-site");
-  var excludeDomains = script.getAttribute("data-exclude-domains");
+  var excludeDomains = script.getAttribute("data-exclude-domains") ?? [];
   var pageInfo = {};
 
   function isTrackingEnabled() {
     const { hostname, pathname } = window.location;
-    return pathname && hostname && siteId && !excludeDomains.includes(hostname);
+    return pathname && hostname && siteId && !excludeDomains?.includes(hostname);
   }
 
   function sendAnalyticsBeacon(data) {
