@@ -92,6 +92,8 @@ async function createTable(env: Env, accessToken: string, datasetId: string): Pr
 		body: JSON.stringify(schema),
 	});
 
+	console.log("CREATING TABLE ...",response.status)
+
 	return response.status === 200 || response.status === 201;
 }
 
