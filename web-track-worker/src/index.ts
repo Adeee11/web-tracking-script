@@ -159,7 +159,7 @@ export default {
 			payloadArr.push(payload);
 		}
 		const access_token = await generateBQAccessToken(env)
-		await addData(request,env,access_token,site_id,payloadArr)
+		await addData(request,env,access_token,`site_${site_id}`,payloadArr)
 		return new Response('OK');
 	},
 } satisfies ExportedHandler<Env>;
