@@ -81,6 +81,7 @@ async function addData(
 		},
 		body: JSON.stringify(payload),
 	});
+	console.log("url",url)
 	console.log("status",response.status)
 	if (response.ok) return new Response('Success', { status: 200 });
 
