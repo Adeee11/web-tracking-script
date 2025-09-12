@@ -46,58 +46,6 @@ async function generateBQAccessToken(env: Env): Promise<string> {
 	return access_token;
 }
 
-async function isTableExists(env: Env, accessToken: string, datasetId: string): Promise<boolean> {
-	const tableId = 'events';
-	const response = await fetch(
-		`https://bigquery.googleapis.com/bigquery/v2/projects/${env.PROJECT_ID}/datasets/${datasetId}/tables/${tableId}`,
-		{
-			headers: { Authorization: `Bearer ${accessToken}` },
-		}
-	);
-	return response.status === 200;
-}
-
-async function createTable(env: Env, accessToken: string, datasetId: string): Promise<Boolean> {
-	const tableId = 'events';
-	console.log("ACCESS TOKEN",accessToken)
-
-	if (await isTableExists(env, accessToken, datasetId)) {
-		return true;
-	}
-
-	const schema = {
-		tableReference: {
-			projectId: env.PROJECT_ID,
-			datasetId,
-			tableId,
-		},
-		schema: {
-			fields: [
-				{ name: 'event_type', type: 'STRING', mode: 'REQUIRED' },
-				{ name: 'data', type: 'JSON', mode: 'REQUIRED' },
-				{ name: 'timestamp', type: 'TIMESTAMP', mode: 'REQUIRED' },
-			],
-		},
-		timePartitioning: {
-			type: 'DAY',
-			field: 'timestamp',
-		},
-		clustering: {
-			fields: ['event_type'],
-		},
-	};
-
-	const response = await fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${env.PROJECT_ID}/datasets/${datasetId}/tables`, {
-		method: 'POST',
-		headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-		body: JSON.stringify(schema),
-	});
-
-	console.log("CREATING TABLE ...",response.status)
-
-	return response.status === 200 || response.status === 201;
-}
-
 async function hashSessionId(cfIp:string, userAgent:string) {
 	const encoder = new TextEncoder();
 	const data = encoder.encode(cfIp + userAgent);
@@ -211,18 +159,7 @@ export default {
 			payloadArr.push(payload);
 		}
 		const access_token = await generateBQAccessToken(env)
-		if(await isTableExists(env,access_token,site_id)){
-			console.log("TABLE EXISTS ... PROCEEDING TO ADD DATA")
-			await addData(request,env,access_token,site_id,payloadArr)
-		}else{
-			console.log("TABLE DOES NOT EXIST ... PROCEEDING TO CREATE TABLE")
-			if(await createTable(env,access_token,site_id)){
-				console.log("TABLE CREATED ...")
-				await addData(request,env,access_token,site_id,payloadArr)
-			}else{
-				console.log("WAIT ... SOMETHING WENT WRONG WHILE CREATING TABLE")
-			}
-		}
+		await addData(request,env,access_token,site_id,payloadArr)
 		return new Response('OK');
 	},
 } satisfies ExportedHandler<Env>;
