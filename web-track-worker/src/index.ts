@@ -83,6 +83,9 @@ async function addData(
 	});
 	console.log("url",url)
 	console.log("status",response.status)
+	console.log(JSON.stringify(payload))
+	const r = await response.json()
+	console.log(r)
 	if (response.ok) return new Response('Success', { status: 200 });
 
 	return new Response('Somethign went wrong', { status: response.status });
