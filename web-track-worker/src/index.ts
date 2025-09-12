@@ -59,6 +59,7 @@ async function isTableExists(env: Env, accessToken: string, datasetId: string): 
 
 async function createTable(env: Env, accessToken: string, datasetId: string): Promise<Boolean> {
 	const tableId = 'events';
+	console.log("ACCESS TOKEN",accessToken)
 
 	if (await isTableExists(env, accessToken, datasetId)) {
 		return true;
