@@ -75,23 +75,18 @@ async function addData(
 	}));
 	const payload = { rows };
 	
-	return new Response('Success', { status: 200 })
-	// const response = await fetch(url, {
-	// 	method: 'POST',
-	// 	headers: {
-	// 		'Content-Type': 'application/json',
-	// 		'Authorization':`Bearer ${accessToken}`
-	// 	},
-	// 	body: JSON.stringify(payload),
-	// });
-	// console.log("url",url)
-	// console.log("status",response.status)
-	// console.log(JSON.stringify(payload))
-	// const r = await response.json()
-	// console.log(r)
-	// if (response.ok) return new Response('Success', { status: 200 });
 
-	// return new Response('Somethign went wrong', { status: response.status });
+	const response = await fetch(url, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Authorization':`Bearer ${accessToken}`
+		},
+		body: JSON.stringify(payload),
+	});
+	if (response.ok) return new Response('Success', { status: 200 });
+
+	return new Response('Somethign went wrong', { status: response.status });
 }
 
 export default {
@@ -168,7 +163,7 @@ export default {
 			payloadArr.push(payload);
 		}
 		const access_token = await generateBQAccessToken(env)
-		// await addData(request,env,access_token,`site_${site_id}`,payloadArr)
-		return new Response(JSON.stringify(payloadArr));
+		await addData(request,env,access_token,`site_${site_id}`,payloadArr)
+		return new Response("OK");
 	},
 } satisfies ExportedHandler<Env>;
