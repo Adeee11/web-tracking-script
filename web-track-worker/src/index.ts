@@ -68,7 +68,7 @@ async function addData(
 	const rows = arr.map(({ event_type, json }) => ({
 		json: {
 			event_type,
-			json: JSON.stringify(json),
+			data: JSON.stringify(json),
 			timestamp: new Date().toISOString(),
 		},
 	}));
