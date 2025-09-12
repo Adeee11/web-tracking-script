@@ -65,7 +65,6 @@ async function addData(
 	const tableId = 'events';
 	const url = `https://bigquery.googleapis.com/bigquery/v2/projects/${env.PROJECT_ID}/datasets/${datasetId}/tables/${tableId}/insertAll`;
 
-	console.log(arr)
 	const rows = arr.map(({ event_type, json }) => ({
 		json: {
 			event_type,
