@@ -4,11 +4,47 @@
   var script = document.currentScript;
   var siteId = script.getAttribute("data-site");
   var excludeDomains = script.getAttribute("data-exclude-domains") ?? [];
-  var pageInfo = {};
+  var external;
+  var attachedHandlers = {
+    links: [],
+    forms: [],
+    downloads: [],
+  };
+
+  var trackFileExtensions = [
+    "pdf",
+    "xlsx",
+    "docx",
+    "txt",
+    "rtf",
+    "csv",
+    "exe",
+    "key",
+    "pps",
+    "ppt",
+    "pptx",
+    "7z",
+    "pkg",
+    "rar",
+    "gz",
+    "zip",
+    "avi",
+    "mov",
+    "mp4",
+    "mpeg",
+    "wmv",
+    "midi",
+    "mp3",
+    "wav",
+    "wma",
+    "dmg",
+  ];
 
   function isTrackingEnabled() {
     const { hostname, pathname } = window.location;
-    return pathname && hostname && siteId && !excludeDomains?.includes(hostname);
+    return (
+      pathname && hostname && siteId && !excludeDomains?.includes(hostname)
+    );
   }
 
   function sendAnalyticsBeacon(data) {
@@ -43,8 +79,60 @@
     );
   }
 
+  const handleExternalLink = () => {
+    // Remove old handlers
+    attachedHandlers.links.forEach(({ element, handler }) => {
+      element.removeEventListener("click", handler);
+    });
+    attachedHandlers.links = [];
+
+    document.querySelectorAll("a").forEach((link) => {
+      const handler = function (event) {
+        const linkUrl = new URL(
+          link.getAttribute("href"),
+          window.location.href
+        );
+        const currentHostname = window.location.hostname;
+        if (!linkUrl) return;
+
+        // ignore file downloads
+        const fileExtension = linkUrl.pathname.split(".").pop().toLowerCase();
+        if (trackFileExtensions.includes(fileExtension)) {
+          return;
+        }
+        // track only external links
+        if (
+          linkUrl.hostname !== currentHostname &&
+          link.href !== undefined &&
+          link.href !== "undefined"
+        ) {
+          event.preventDefault();
+          external = linkUrl;
+          events.push([
+            "external_link",
+            {
+              external_link: external,
+            },
+          ]);
+
+          // window.location.href = link.href
+
+          // Check if link should open in a new tab
+          if (link.target === "_blank") {
+            window.open(link.href, "_blank");
+          } else {
+            window.location.href = link.href;
+          }
+        }
+      };
+      link.addEventListener("click", handler);
+      attachedHandlers.links.push({ element: link, handler });
+    });
+  };
+
   function historyBasedTracking() {
     if (history) {
+      handleExternalLink();
       const originalPushState = history.pushState;
       history.pushState = function (...args) {
         const result = originalPushState.apply(history, args);
@@ -89,6 +177,8 @@
   document.addEventListener("DOMContentLoaded", function () {
     let searchParams = new URLSearchParams(window.location.search);
     let searchParamsObj = Object.fromEntries(searchParams);
+
+    handleExternalLink();
 
     pageInfo = {
       host: window.location.hostname,
