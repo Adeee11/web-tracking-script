@@ -79,7 +79,7 @@
     );
   }
 
-  const handleExternalLink = () => {
+  function handleExternalLink(){
     // Remove old handlers
     attachedHandlers.links.forEach(({ element, handler }) => {
       element.removeEventListener("click", handler);
