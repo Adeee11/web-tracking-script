@@ -79,7 +79,7 @@
     );
   }
 
-  function handleExternalLink(){
+  function handleExternalLink() {
     // Remove old handlers
     attachedHandlers.links.forEach(({ element, handler }) => {
       element.removeEventListener("click", handler);
@@ -128,7 +128,7 @@
       link.addEventListener("click", handler);
       attachedHandlers.links.push({ element: link, handler });
     });
-  };
+  }
 
   function historyBasedTracking() {
     if (history) {
@@ -158,6 +158,7 @@
           {
             ...pageInfo,
             timestamp: Date.now(),
+            time_spent: timeSpent ?? 0,
             viewport_height: document.documentElement.scrollHeight,
             viewport_width: document.documentElement.clientWidth,
           },
@@ -189,11 +190,15 @@
   });
 
   window.addEventListener("beforeunload", function () {
+    const navigationTiming = performance.getEntriesByType("navigation")[0];
+    const timeSpent =
+      (performance.now() - navigationTiming.domContentLoadedEventEnd) / 1000;
     events.push([
       "page_view",
       {
         ...pageInfo,
         timestamp: Date.now(),
+        time_spent: timeSpent ?? 0,
       },
     ]);
     setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
