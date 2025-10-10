@@ -46,14 +46,33 @@ async function generateBQAccessToken(env: Env): Promise<string> {
 	return access_token;
 }
 
-async function hashSessionId(cfIp:string, userAgent:string) {
+
+async function getStatelessIds(request: Request) {
+  const now = Math.floor(Date.now() / 1000);
+  const visitorBucket = Math.floor(now / (60 * 60 * 24)); // 1-day window
+  const sessionBucket = Math.floor(now / (60 * 30)); // 30-minute window
+
+  const cfIp = request.headers.get('cf-connecting-ip') ?? 'UNKNOWN_IP';
+  const userAgent = request.headers.get('User-Agent') ?? '';
+  const acceptLang = request.headers.get('Accept-Language') ?? '';
+  const acceptEnc = request.headers.get('Accept-Encoding') ?? '';
+
+  const fingerprint = cfIp + userAgent + acceptLang + acceptEnc;
+
+  const visitor_id = await hashSessionId(fingerprint + visitorBucket);
+  const session_id = await hashSessionId(fingerprint + sessionBucket);
+
+  return { visitor_id, session_id };
+}
+
+async function hashSessionId(fingerprint: string) {
 	const encoder = new TextEncoder();
-	const data = encoder.encode(cfIp + userAgent);
+	const data = encoder.encode(fingerprint);
 	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
 	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+	const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 	return hashHex;
-  }
+}
 
 async function addData(
 	request: Request,
@@ -73,13 +92,12 @@ async function addData(
 		},
 	}));
 	const payload = { rows };
-	
 
 	const response = await fetch(url, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'Authorization':`Bearer ${accessToken}`
+			Authorization: `Bearer ${accessToken}`,
 		},
 		body: JSON.stringify(payload),
 	});
@@ -120,6 +138,10 @@ export default {
 			return new Response('ok', { status: 200 });
 		}
 		const userAgent = request.headers.get('User-Agent') ?? '';
+		const cfIp = request.headers.get('cf-connecting-ip') ?? 'UNKNOWN_IP';
+		const acceptLang = request.headers.get('Accept-Language') ?? '';
+		const acceptEnc = request.headers.get('Accept-Encoding') ?? '';
+		const fingerprint = cfIp + userAgent + acceptLang + acceptEnc;
 
 		let device_type = 'Unknown Device';
 
@@ -148,11 +170,12 @@ export default {
 		}
 
 		const payloadArr = [];
-		const session_id = await hashSessionId(request.headers.get('cf-connecting-ip')??"UNKNOWN_IP",userAgent)
+
+		const {visitor_id,session_id} = await getStatelessIds(request);
 
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
-			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type,session_id };
+			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id,visitor_id };
 			const payload = {
 				event_type: event,
 				json: {
@@ -161,8 +184,8 @@ export default {
 			};
 			payloadArr.push(payload);
 		}
-		const access_token = await generateBQAccessToken(env)
-		await addData(request,env,access_token,`site_${site_id}`,payloadArr)
-		return new Response("OK");
+		const access_token = await generateBQAccessToken(env);
+		await addData(request, env, access_token, `site_${site_id}`, payloadArr);
+		return new Response('OK');
 	},
 } satisfies ExportedHandler<Env>;
