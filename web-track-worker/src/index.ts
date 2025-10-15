@@ -46,23 +46,22 @@ async function generateBQAccessToken(env: Env): Promise<string> {
 	return access_token;
 }
 
-
 async function getStatelessIds(request: Request) {
-  const now = Math.floor(Date.now() / 1000);
-  const visitorBucket = Math.floor(now / (60 * 60 * 24)); // 1-day window
-  const sessionBucket = Math.floor(now / (60 * 30)); // 30-minute window
+	const now = Math.floor(Date.now() / 1000);
+	const visitorBucket = Math.floor(now / (60 * 60 * 24)); // 1-day window
+	const sessionBucket = Math.floor(now / (60 * 30)); // 30-minute window
 
-  const cfIp = request.headers.get('cf-connecting-ip') ?? 'UNKNOWN_IP';
-  const userAgent = request.headers.get('User-Agent') ?? '';
-  const acceptLang = request.headers.get('Accept-Language') ?? '';
-  const acceptEnc = request.headers.get('Accept-Encoding') ?? '';
+	const cfIp = request.headers.get('cf-connecting-ip') ?? 'UNKNOWN_IP';
+	const userAgent = request.headers.get('User-Agent') ?? '';
+	const acceptLang = request.headers.get('Accept-Language') ?? '';
+	const acceptEnc = request.headers.get('Accept-Encoding') ?? '';
 
-  const fingerprint = cfIp + userAgent + acceptLang + acceptEnc;
+	const fingerprint = cfIp + userAgent + acceptLang + acceptEnc;
 
-  const visitor_id = await hashSessionId(fingerprint + visitorBucket);
-  const session_id = await hashSessionId(fingerprint + sessionBucket);
+	const visitor_id = await hashSessionId(fingerprint + visitorBucket);
+	const session_id = await hashSessionId(fingerprint + sessionBucket);
 
-  return { visitor_id, session_id };
+	return { visitor_id, session_id };
 }
 
 async function hashSessionId(fingerprint: string) {
@@ -171,11 +170,26 @@ export default {
 
 		const payloadArr = [];
 
-		const {visitor_id,session_id} = await getStatelessIds(request);
+		const { visitor_id, session_id } = await getStatelessIds(request);
 
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
-			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id,visitor_id };
+			// Ask the Durable Object to check quota
+			const id = env.SITE_QUOTA.idFromName(site_id);
+			const obj = env.SITE_QUOTA.get(id);
+
+			const quotaRes = await obj.fetch('https://quota/check', {
+				method: 'POST',
+				body: JSON.stringify({
+					site_id,
+					event_type:event
+				}),
+			});
+
+			if (quotaRes.status === 429) {
+				return quotaRes;
+			}
+			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
 			const payload = {
 				event_type: event,
 				json: {
