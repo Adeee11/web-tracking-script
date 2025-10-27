@@ -23,7 +23,13 @@
 			}
 		]
 	},
-
+	"kv_namespaces": [
+		{
+			"binding": "SITE_SETTINGS",
+			"id": "39b8558983604367b5a3ba3ee5344a6c",
+			"remote": true
+		}
+	],
 	"migrations": [
 		{
 			"tag": "v1",
