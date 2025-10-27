@@ -108,10 +108,35 @@ async function addData(
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const { url, method } = request;
-
+		const { pathname, searchParams } = new URL(url);
 		// Handle GET request to root path
 		if (method === 'GET' && new URL(url).pathname === '/') {
 			return Response.redirect('https://flooanalytics.com/', 301);
+		}
+
+		// ✅ New route for KV management
+		if (pathname === '/block-settings') {
+			const siteId = searchParams.get('siteId');
+			if (!siteId) return new Response('Missing siteId', { status: 400 });
+
+			const key = `site:settings:${siteId}`;
+
+			if (request.method === 'GET') {
+				const data = await env.SITE_SETTINGS.get(key);
+				return new Response(data || '{}', {
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+
+			if (request.method === 'POST') {
+				const body = await request.json() as {};
+				const existing = JSON.parse((await env.SITE_SETTINGS.get(key)) || '{}');
+				const updated = { ...existing, ...body };
+				await env.SITE_SETTINGS.put(key, JSON.stringify(updated));
+				return new Response('Saved', { status: 200 });
+			}
+
+			return new Response('Method not allowed', { status: 405 });
 		}
 
 		// Check if it's a request for common browser assets
@@ -182,7 +207,7 @@ export default {
 				method: 'POST',
 				body: JSON.stringify({
 					site_id,
-					event_type:event
+					event_type: event,
 				}),
 			});
 
