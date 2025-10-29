@@ -115,6 +115,23 @@ export default {
 			return Response.redirect('https://flooanalytics.com/', 301);
 		}
 
+		if (pathname === '/durable') {
+			const id = env.SITE_QUOTA.idFromName('aZ93kL');
+			const obj = env.SITE_QUOTA.get(id);
+
+			const quotaRes = await obj.fetch('https://quota/check', {
+				method: 'POST',
+				body: JSON.stringify({
+					site_id: 'aZ93kL',
+					event_type: 'page_view',
+					action: 'read',
+				}),
+			});
+			const r = await quotaRes.json();
+
+			return new Response(JSON.stringify(r));
+		}
+
 		if (pathname === '/add-plan') {
 			await env.PLANS.put(
 				'business',
@@ -244,12 +261,14 @@ export default {
 
 export class SiteQuota implements DurableObject {
 	private storage: DurableObjectStorage;
+	private env: Env;
 
 	constructor(private state: DurableObjectState, env: Env) {
 		this.storage = state.storage;
+		this.env = env;
 	}
 	async fetch(request: Request): Promise<Response> {
-		const { site_id, event_type } = await request.json<{ site_id: string; event_type: string }>();
+		const { site_id, event_type, action } = await request.json<{ site_id: string; event_type: string; action?: 'read' | 'increment' }>();
 
 		// Only enforce quota for page_view events
 		if (event_type !== 'page_view') {
@@ -272,14 +291,18 @@ export class SiteQuota implements DurableObject {
 
 		const data = (await res.json()) as { plan: string; subscription_id: string };
 
-		const plan = (await env.PLANS.get(data.plan)) 
+		const plan = await env.PLANS.get(data.plan);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 		const key = `quota:${site_id}:${monthKey}`;
 
-		const count = (await this.storage.get<number>(key)) || 0;
+		const count = (await this.storage.get<number>(key)) || 100;
+
+		if (action === 'read') {
+			return new Response(JSON.stringify({ count }), { status: 200 });
+		}
 
 		if (count >= plan_data.max_page_views) {
 			return new Response('Monthly limit reached for this site', { status: 429 });
