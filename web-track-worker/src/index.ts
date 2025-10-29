@@ -115,23 +115,6 @@ export default {
 			return Response.redirect('https://flooanalytics.com/', 301);
 		}
 
-		if (pathname === '/durable') {
-			const id = env.SITE_QUOTA.idFromName('aZ93kL');
-			const obj = env.SITE_QUOTA.get(id);
-
-			const quotaRes = await obj.fetch('https://quota/check', {
-				method: 'POST',
-				body: JSON.stringify({
-					site_id: 'aZ93kL',
-					event_type: 'page_view',
-					action: 'read',
-				}),
-			});
-			const r = await quotaRes.json();
-
-			return new Response(JSON.stringify(r));
-		}
-
 		if (pathname === '/add-plan') {
 			await env.PLANS.put(
 				'business',
@@ -184,6 +167,23 @@ export default {
 		const country_code = request.cf?.country;
 		const city = request.cf?.city;
 		const region = request.cf?.region;
+
+		if (pathname === '/get-exhausted-quota') {
+			const id = env.SITE_QUOTA.idFromName(site_id);
+			const obj = env.SITE_QUOTA.get(id);
+
+			const quotaRes = await obj.fetch('https://quota/check', {
+				method: 'POST',
+				body: JSON.stringify({
+					site_id: site_id,
+					event_type: 'page_view',
+					action: 'read',
+				}),
+			});
+			const resp = await quotaRes.json();
+
+			return new Response(JSON.stringify(resp));
+		}
 
 		const currentDate = new Date().toISOString().split('T')[0];
 
@@ -298,10 +298,10 @@ export class SiteQuota implements DurableObject {
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 		const key = `quota:${site_id}:${monthKey}`;
 
-		const count = (await this.storage.get<number>(key)) || 100;
+		const count = (await this.storage.get<number>(key)) || 0;
 
 		if (action === 'read') {
-			return new Response(JSON.stringify({ count }), { status: 200 });
+			return new Response(JSON.stringify({ consumed:count,allowed:plan_data.max_page_views }), { status: 200 });
 		}
 
 		if (count >= plan_data.max_page_views) {
