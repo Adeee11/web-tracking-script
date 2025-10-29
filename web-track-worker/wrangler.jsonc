@@ -28,10 +28,21 @@
 			"binding": "SITE_SETTINGS",
 			"id": "39b8558983604367b5a3ba3ee5344a6c",
 			"remote": true
+		},
+		{
+			"binding": "PLANS",
+			"id": "3ca8c26a45114824bcded48ea32afec2",
+			"remote": true
 		}
 	],
-	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["SiteQuota"] }]
-
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"SiteQuota"
+			]
+		}
+	]
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
