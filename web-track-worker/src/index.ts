@@ -12,6 +12,7 @@
  */
 
 import { sign } from '@tsndr/cloudflare-worker-jwt';
+import { env } from 'cloudflare:workers';
 
 function withCors(response: Response): Response {
 	const headers = new Headers(response.headers);
@@ -114,6 +115,18 @@ export default {
 			return Response.redirect('https://flooanalytics.com/', 301);
 		}
 
+		if (pathname === '/add-plan') {
+			await env.PLANS.put(
+				'business',
+				JSON.stringify({
+					max_page_views: 10000,
+					max_sites: 1_000_000_000,
+					max_team_members: 10,
+				})
+			);
+			return new Response('added');
+		}
+
 		// ✅ New route for KV management
 		if (pathname === '/block-settings') {
 			const siteId = searchParams.get('siteId');
@@ -129,7 +142,7 @@ export default {
 			}
 
 			if (request.method === 'POST') {
-				const body = await request.json() as {};
+				const body = (await request.json()) as {};
 				const existing = JSON.parse((await env.SITE_SETTINGS.get(key)) || '{}');
 				const updated = { ...existing, ...body };
 				await env.SITE_SETTINGS.put(key, JSON.stringify(updated));
@@ -211,7 +224,7 @@ export default {
 				}),
 			});
 
-			if (quotaRes.status === 429) {
+			if (quotaRes.status === 429 || quotaRes.status === 400) {
 				return quotaRes;
 			}
 			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
@@ -243,13 +256,32 @@ export class SiteQuota implements DurableObject {
 			return new Response('ok', { status: 200 });
 		}
 
+		const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/get_user_plan_by_site`, {
+			method: 'POST',
+			headers: {
+				apikey: env.SUPABASE_KEY,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ site_id_param: site_id }),
+		});
+
+		if (!res.ok) {
+			console.error('RPC call failed:', await res.text());
+			return new Response('error', { status: 400 });
+		}
+
+		const data = (await res.json()) as { plan: string; subscription_id: string };
+
+		const plan = (await env.PLANS.get(data.plan)) 
+		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
+
 		const now = new Date();
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 		const key = `quota:${site_id}:${monthKey}`;
 
 		const count = (await this.storage.get<number>(key)) || 0;
 
-		if (count >= 100000) {
+		if (count >= plan_data.max_page_views) {
 			return new Response('Monthly limit reached for this site', { status: 429 });
 		}
 
@@ -270,4 +302,3 @@ export class SiteQuota implements DurableObject {
 		throw new Error('Method not implemented.');
 	}
 }
-
