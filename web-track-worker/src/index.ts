@@ -318,7 +318,7 @@ export class PlanQuota implements DurableObject {
 		const count = (await this.storage.get<number>(key)) || 0;
 
 		if (action === 'read') {
-			return new Response(JSON.stringify({ consumed_page_view: count, allowed_page_view: plan_data.max_page_views }), { status: 200 });
+			return new Response(JSON.stringify({ consumed_page_view: count, allowed_page_view: plan_data.max_page_views,allowed_team_members:plan_data.max_team_members,allowed_sites:plan_data.max_sites }), { status: 200 });
 		}
 
 		if (count >= plan_data.max_page_views) {
