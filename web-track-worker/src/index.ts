@@ -182,7 +182,6 @@ export default {
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
 				body: JSON.stringify({
-					site_id: site_id,
 					event_type: 'page_view',
 					action: 'read',
 					plan_name,
@@ -190,6 +189,31 @@ export default {
 				}),
 			});
 			const resp = await quotaRes.json();
+
+			return new Response(JSON.stringify(resp));
+		}
+
+		if (pathname === '/update-quota') {
+			const user_id = urlParams.get('user_id')!;
+			const plan_name = urlParams.get('plan_name')!;
+
+			if (!user_id || !plan_name) {
+				return new Response('missing user_id or plan_name', { status: 404 });
+			}
+
+			const id = env.USER_QUOTA.idFromName(user_id);
+			const obj = env.USER_QUOTA.get(id);
+
+			const quotaRes = await obj.fetch('https://quota/check', {
+				method: 'POST',
+				body: JSON.stringify({
+					event_type: 'site_created',
+					action: 'increment',
+					plan_name,
+					user_id,
+				}),
+			});
+			const resp = await quotaRes.text();
 
 			return new Response(JSON.stringify(resp));
 		}
@@ -315,10 +339,9 @@ export class PlanQuota implements DurableObject {
 		const sitesKey = `sites:${user_id}`;
 
 		// Read current stored values
-		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
 		const totalTeamMembers = (await this.storage.get<number>(teamMembersKey)) || 0;
+		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
 		const totalSites = (await this.storage.get<number>(sitesKey)) || 0;
-
 		if (action === 'read') {
 			return new Response(
 				JSON.stringify({
