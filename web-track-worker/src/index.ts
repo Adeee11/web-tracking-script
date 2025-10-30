@@ -280,7 +280,7 @@ export default {
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
 			// Ask the Durable Object to check quota
-			const id = env.USER_QUOTA.idFromName(data.created_by);
+			const id = env.USER_QUOTA.idFromName(rpc_data.created_by);
 			const obj = env.USER_QUOTA.get(id);
 
 			const quotaRes = await obj.fetch('https://quota/check', {
@@ -318,7 +318,7 @@ export class PlanQuota implements DurableObject {
 		this.storage = state.storage;
 		this.env = env;
 
-		console.log("DO instance created for", this.state.id.toString());
+		console.log("DO instance created for", this.state.id.toString()); 
 
 	}
 	async fetch(request: Request): Promise<Response> {
