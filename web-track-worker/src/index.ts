@@ -259,7 +259,7 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-export class SiteQuota implements DurableObject {
+export class PlanQuota implements DurableObject {
 	private storage: DurableObjectStorage;
 	private env: Env;
 
@@ -289,19 +289,19 @@ export class SiteQuota implements DurableObject {
 			return new Response('error', { status: 400 });
 		}
 
-		const data = (await res.json()) as { plan: string; subscription_id: string };
+		const data = (await res.json()) as { plan: string; subscription_id: string,created_by:string };
 
 		const plan = await env.PLANS.get(data.plan);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
-		const key = `quota:${site_id}:${monthKey}`;
+		const key = `quota:${data.created_by}:${monthKey}`;
 
 		const count = (await this.storage.get<number>(key)) || 0;
 
 		if (action === 'read') {
-			return new Response(JSON.stringify({ consumed:count,allowed:plan_data.max_page_views }), { status: 200 });
+			return new Response(JSON.stringify({ consumed_page_view:count,allowed_page_view:plan_data.max_page_views }), { status: 200 });
 		}
 
 		if (count >= plan_data.max_page_views) {

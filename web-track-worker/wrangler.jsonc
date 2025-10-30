@@ -21,7 +21,7 @@
 		"bindings": [
 			{
 				"name": "SITE_QUOTA",
-				"class_name": "SiteQuota"
+				"class_name": "PlanQuota"
 			}
 		]
 	},
@@ -41,7 +41,7 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": [
-				"SiteQuota"
+				"PlanQuota"
 			]
 		}
 	]
