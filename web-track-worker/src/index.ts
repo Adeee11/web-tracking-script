@@ -172,12 +172,17 @@ export default {
 			const id = env.SITE_QUOTA.idFromName(site_id);
 			const obj = env.SITE_QUOTA.get(id);
 
+			const plan_name = urlParams.get('plan_name');
+			const user_id = urlParams.get('user_id');
+
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
 				body: JSON.stringify({
 					site_id: site_id,
 					event_type: 'page_view',
 					action: 'read',
+					plan_name,
+					user_id,
 				}),
 			});
 			const resp = await quotaRes.json();
@@ -268,40 +273,51 @@ export class PlanQuota implements DurableObject {
 		this.env = env;
 	}
 	async fetch(request: Request): Promise<Response> {
-		const { site_id, event_type, action } = await request.json<{ site_id: string; event_type: string; action?: 'read' | 'increment' }>();
+		const { site_id, event_type, action, plan_name, user_id } = await request.json<{
+			site_id: string;
+			event_type: string;
+			action?: 'read' | 'increment';
+			plan_name?: string;
+			user_id?: string;
+		}>();
 
 		// Only enforce quota for page_view events
 		if (event_type !== 'page_view') {
 			return new Response('ok', { status: 200 });
 		}
+		let fetch_plan_name = plan_name;
+		let created_by = user_id;
+		if (!plan_name || !user_id) {
+			const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/get_user_plan_by_site`, {
+				method: 'POST',
+				headers: {
+					apikey: env.SUPABASE_KEY,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ site_id_param: site_id }),
+			});
 
-		const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/get_user_plan_by_site`, {
-			method: 'POST',
-			headers: {
-				apikey: env.SUPABASE_KEY,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ site_id_param: site_id }),
-		});
+			if (!res.ok) {
+				console.error('RPC call failed:', await res.text());
+				return new Response('error', { status: 400 });
+			}
 
-		if (!res.ok) {
-			console.error('RPC call failed:', await res.text());
-			return new Response('error', { status: 400 });
+			const data = (await res.json()) as { plan: string; subscription_id: string; created_by: string };
+			fetch_plan_name = data.plan;
+			created_by = user_id;
 		}
+		const plan = await env.PLANS.get(fetch_plan_name!);
 
-		const data = (await res.json()) as { plan: string; subscription_id: string,created_by:string };
-
-		const plan = await env.PLANS.get(data.plan);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
-		const key = `quota:${data.created_by}:${monthKey}`;
+		const key = `quota:${created_by}:${monthKey}`;
 
 		const count = (await this.storage.get<number>(key)) || 0;
 
 		if (action === 'read') {
-			return new Response(JSON.stringify({ consumed_page_view:count,allowed_page_view:plan_data.max_page_views }), { status: 200 });
+			return new Response(JSON.stringify({ consumed_page_view: count, allowed_page_view: plan_data.max_page_views }), { status: 200 });
 		}
 
 		if (count >= plan_data.max_page_views) {
