@@ -300,9 +300,8 @@ export class PlanQuota implements DurableObject {
 			plan_name: string;
 			user_id: string;
 		}>();
-
-		// Only enforce quota for page_view events
-		if (event_type !== 'page_view') {
+		// Only enforce quota for page_view,team_member_added or site_created events
+		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
 			return new Response('ok', { status: 200 });
 		}
 
@@ -311,21 +310,21 @@ export class PlanQuota implements DurableObject {
 
 		const now = new Date();
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
-		const key = `quota:${user_id}:${monthKey}`;
+		const monthlyKey = `quota:${user_id}:${monthKey}`;
+		const teamMembersKey = `team_members:${user_id}`;
+		const sitesKey = `sites:${user_id}`;
 
-		// Get stored data for this user/month
-		const existing = (await this.storage.get<Record<string, number>>(key)) || {
-			page_view: 0,
-			team_members_added: 0,
-			sites_owned: 0,
-		};
+		// Read current stored values
+		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
+		const totalTeamMembers = (await this.storage.get<number>(teamMembersKey)) || 0;
+		const totalSites = (await this.storage.get<number>(sitesKey)) || 0;
 
 		if (action === 'read') {
 			return new Response(
 				JSON.stringify({
-					consumed_page_view: existing.page_view,
-					team_members_added: existing.team_members_added,
-					sites_owned: existing.sites_owned,
+					consumed_page_view: monthlyQuota.page_view,
+					team_members_added: totalTeamMembers,
+					sites_owned: totalSites,
 					allowed_page_view: plan_data.max_page_views,
 					allowed_team_members: plan_data.max_team_members,
 					allowed_sites: plan_data.max_sites,
@@ -334,12 +333,26 @@ export class PlanQuota implements DurableObject {
 			);
 		}
 
-		if (event_type === 'page_view') {
-			if (existing.page_view >= plan_data.max_page_views) {
-				return new Response('Monthly limit reached for this site', { status: 429 });
-			}
+		// Handle incrementing each event type
+		switch (event_type) {
+			case 'page_view':
+				if (monthlyQuota.page_view >= plan_data.max_page_views) return new Response('Monthly page view limit reached', { status: 429 });
+				monthlyQuota.page_view++;
+				await this.storage.put(monthlyKey, monthlyQuota);
+				break;
 
-			await this.storage.put(key, existing.page_view + 1);
+			case 'team_member_added':
+				if (totalTeamMembers >= plan_data.max_team_members) return new Response('Team member limit reached', { status: 429 });
+				await this.storage.put(teamMembersKey, totalTeamMembers + 1);
+				break;
+
+			case 'site_created':
+				if (totalSites >= plan_data.max_sites) return new Response('Site limit reached', { status: 429 });
+				await this.storage.put(sitesKey, totalSites + 1);
+				break;
+
+			default:
+				return new Response('Unknown event type', { status: 400 });
 		}
 
 		return new Response('ok', { status: 200 });
