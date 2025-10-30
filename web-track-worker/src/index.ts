@@ -196,6 +196,7 @@ export default {
 		if (pathname === '/update-quota') {
 			const user_id = urlParams.get('user_id')!;
 			const plan_name = urlParams.get('plan_name')!;
+			const event = urlParams.get('event')!;
 
 			if (!user_id || !plan_name) {
 				return new Response('missing user_id or plan_name', { status: 404 });
@@ -207,7 +208,7 @@ export default {
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
 				body: JSON.stringify({
-					event_type: 'site_created',
+					event_type: event,
 					action: 'increment',
 					plan_name,
 					user_id,
@@ -215,7 +216,7 @@ export default {
 			});
 			const resp = await quotaRes.text();
 
-			return new Response(JSON.stringify(resp));
+			return new Response(JSON.stringify(resp),{status:quotaRes.status});
 		}
 
 		const currentDate = new Date().toISOString().split('T')[0];
