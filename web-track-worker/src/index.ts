@@ -317,9 +317,6 @@ export class PlanQuota implements DurableObject {
 	constructor(private state: DurableObjectState, env: Env) {
 		this.storage = state.storage;
 		this.env = env;
-
-		console.log("DO instance created for", this.state.id.toString()); 
-
 	}
 	async fetch(request: Request): Promise<Response> {
 		const { event_type, action, plan_name, user_id } = await request.json<{
@@ -328,8 +325,6 @@ export class PlanQuota implements DurableObject {
 			plan_name: string;
 			user_id: string;
 		}>();
-
-		console.log("user_id",user_id)
 
 		// Only enforce quota for page_view,team_member_added or site_created events
 		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
@@ -350,7 +345,6 @@ export class PlanQuota implements DurableObject {
 		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
 		const totalSites = (await this.storage.get<number>(sitesKey)) || 0;
 		if (action === 'read') {
-			console.log("monthly quota",monthlyQuota,monthlyKey)
 			return new Response(
 				JSON.stringify({
 					consumed_page_view: monthlyQuota.page_view,
@@ -368,7 +362,6 @@ export class PlanQuota implements DurableObject {
 		// Handle incrementing each event type
 		switch (event_type) {
 			case 'page_view':
-				console.log("monthly",monthlyQuota.page_view,monthlyKey)
 				if (monthlyQuota.page_view >= plan_data.max_page_views) return new Response('Monthly page view limit reached', { status: 429 });
 				monthlyQuota.page_view++;
 				await this.storage.put(monthlyKey, monthlyQuota);
