@@ -172,13 +172,12 @@ export default {
 			const user_id = urlParams.get('user_id')!;
 			const plan_name = urlParams.get('plan_name')!;
 
-			if(!user_id || !plan_name){
-				return new Response('missing user_id or plan_name',{status:404})
+			if (!user_id || !plan_name) {
+				return new Response('missing user_id or plan_name', { status: 404 });
 			}
 
 			const id = env.USER_QUOTA.idFromName(user_id);
 			const obj = env.USER_QUOTA.get(id);
-
 
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
@@ -251,7 +250,7 @@ export default {
 			return new Response('error', { status: 400 });
 		}
 
-		const data = (await res.json()) as { plan: string; subscription_id: string; created_by: string };
+		const rpc_data = (await res.json()) as { plan: string; subscription_id: string; created_by: string };
 
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
@@ -263,8 +262,8 @@ export default {
 				method: 'POST',
 				body: JSON.stringify({
 					event_type: event,
-					user_id:data.created_by,
-					plan_name:data.plan
+					user_id: rpc_data.created_by,
+					plan_name: rpc_data.plan,
 				}),
 			});
 
@@ -295,7 +294,7 @@ export class PlanQuota implements DurableObject {
 		this.env = env;
 	}
 	async fetch(request: Request): Promise<Response> {
-		const {  event_type, action, plan_name, user_id } = await request.json<{
+		const { event_type, action, plan_name, user_id } = await request.json<{
 			event_type: string;
 			action?: 'read' | 'increment';
 			plan_name: string;
@@ -308,7 +307,6 @@ export class PlanQuota implements DurableObject {
 		}
 
 		const plan = await env.PLANS.get(plan_name);
-
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
@@ -318,7 +316,15 @@ export class PlanQuota implements DurableObject {
 		const count = (await this.storage.get<number>(key)) || 0;
 
 		if (action === 'read') {
-			return new Response(JSON.stringify({ consumed_page_view: count, allowed_page_view: plan_data.max_page_views,allowed_team_members:plan_data.max_team_members,allowed_sites:plan_data.max_sites }), { status: 200 });
+			return new Response(
+				JSON.stringify({
+					consumed_page_view: count,
+					allowed_page_view: plan_data.max_page_views,
+					allowed_team_members: plan_data.max_team_members,
+					allowed_sites: plan_data.max_sites,
+				}),
+				{ status: 200 }
+			);
 		}
 
 		if (count >= plan_data.max_page_views) {

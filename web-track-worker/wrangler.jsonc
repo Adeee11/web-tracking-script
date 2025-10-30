@@ -40,7 +40,7 @@
 	"migrations": [
 		{
 			"tag": "v2",
-			"renamed_classes": [{"from": "SiteQuota","to": "PlanQuota"}]
+			"new_sqlite_classes": ["PlanQuota"]
 		}
 	]
 	/**
