@@ -357,9 +357,11 @@ export class PlanQuota implements DurableObject {
 			);
 		}
 
+		
 		// Handle incrementing each event type
 		switch (event_type) {
 			case 'page_view':
+				console.log("monthly",monthlyQuota.page_view)
 				if (monthlyQuota.page_view >= plan_data.max_page_views) return new Response('Monthly page view limit reached', { status: 429 });
 				monthlyQuota.page_view++;
 				await this.storage.put(monthlyKey, monthlyQuota);
