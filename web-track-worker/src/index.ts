@@ -344,6 +344,7 @@ export class PlanQuota implements DurableObject {
 		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
 		const totalSites = (await this.storage.get<number>(sitesKey)) || 0;
 		if (action === 'read') {
+			console.log("monthly quota",monthlyQuota)
 			return new Response(
 				JSON.stringify({
 					consumed_page_view: monthlyQuota.page_view,
