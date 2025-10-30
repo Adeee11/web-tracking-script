@@ -317,6 +317,9 @@ export class PlanQuota implements DurableObject {
 	constructor(private state: DurableObjectState, env: Env) {
 		this.storage = state.storage;
 		this.env = env;
+
+		console.log("DO instance created for", this.state.id.toString());
+
 	}
 	async fetch(request: Request): Promise<Response> {
 		const { event_type, action, plan_name, user_id } = await request.json<{
@@ -330,7 +333,7 @@ export class PlanQuota implements DurableObject {
 			return new Response('ok', { status: 200 });
 		}
 
-		const plan = await env.PLANS.get(plan_name);
+		const plan = await this.env.PLANS.get(plan_name);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
