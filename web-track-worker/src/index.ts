@@ -313,12 +313,19 @@ export class PlanQuota implements DurableObject {
 		const monthKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}`;
 		const key = `quota:${user_id}:${monthKey}`;
 
-		const count = (await this.storage.get<number>(key)) || 0;
+		// Get stored data for this user/month
+		const existing = (await this.storage.get<Record<string, number>>(key)) || {
+			page_view: 0,
+			team_members_added: 0,
+			sites_owned: 0,
+		};
 
 		if (action === 'read') {
 			return new Response(
 				JSON.stringify({
-					consumed_page_view: count,
+					consumed_page_view: existing.page_view,
+					team_members_added: existing.team_members_added,
+					sites_owned: existing.sites_owned,
 					allowed_page_view: plan_data.max_page_views,
 					allowed_team_members: plan_data.max_team_members,
 					allowed_sites: plan_data.max_sites,
@@ -327,11 +334,13 @@ export class PlanQuota implements DurableObject {
 			);
 		}
 
-		if (count >= plan_data.max_page_views) {
-			return new Response('Monthly limit reached for this site', { status: 429 });
-		}
+		if (event_type === 'page_view') {
+			if (existing.page_view >= plan_data.max_page_views) {
+				return new Response('Monthly limit reached for this site', { status: 429 });
+			}
 
-		await this.storage.put(key, count + 1);
+			await this.storage.put(key, existing.page_view + 1);
+		}
 
 		return new Response('ok', { status: 200 });
 	}
