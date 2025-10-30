@@ -40,9 +40,6 @@
 	"migrations": [
 		{
 			"tag": "v2",
-			"new_sqlite_classes": [
-				"PlanQuota"
-			],
 			"renamed_classes": [{"from": "SiteQuota","to": "PlanQuota"}]
 		}
 	]
