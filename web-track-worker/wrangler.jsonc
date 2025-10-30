@@ -20,7 +20,7 @@
 	"durable_objects": {
 		"bindings": [
 			{
-				"name": "SITE_QUOTA",
+				"name": "USER_QUOTA",
 				"class_name": "PlanQuota"
 			}
 		]
