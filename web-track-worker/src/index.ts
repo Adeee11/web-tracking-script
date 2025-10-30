@@ -344,7 +344,7 @@ export class PlanQuota implements DurableObject {
 		const monthlyQuota = (await this.storage.get<Record<string, number>>(monthlyKey)) || { page_view: 0 };
 		const totalSites = (await this.storage.get<number>(sitesKey)) || 0;
 		if (action === 'read') {
-			console.log("monthly quota",monthlyQuota)
+			console.log("monthly quota",monthlyQuota,monthlyKey)
 			return new Response(
 				JSON.stringify({
 					consumed_page_view: monthlyQuota.page_view,
@@ -362,7 +362,7 @@ export class PlanQuota implements DurableObject {
 		// Handle incrementing each event type
 		switch (event_type) {
 			case 'page_view':
-				console.log("monthly",monthlyQuota.page_view)
+				console.log("monthly",monthlyQuota.page_view,monthlyKey)
 				if (monthlyQuota.page_view >= plan_data.max_page_views) return new Response('Monthly page view limit reached', { status: 429 });
 				monthlyQuota.page_view++;
 				await this.storage.put(monthlyKey, monthlyQuota);
