@@ -9,8 +9,9 @@
     links: [],
     forms: [],
     downloads: [],
-    custom:[]
+    custom: [],
   };
+  var maxScrollDepth = 0;
 
   var trackFileExtensions = [
     "pdf",
@@ -63,6 +64,8 @@
 
     navigator.sendBeacon(url);
   }
+
+  window.addEventListener("scroll", updateScrollDepth);
 
   if (void 0 !== history) {
     const searchParams = new URLSearchParams(window.location.search);
@@ -132,56 +135,80 @@
   }
 
   function handleCustomEventElements() {
-  // Remove old handlers
-  if (attachedHandlers.custom) {
-    attachedHandlers.custom.forEach(({ element, handler }) => {
-      element.removeEventListener("click", handler);
-    });
-  }
-  attachedHandlers.custom = [];
+    // Remove old handlers
+    if (attachedHandlers.custom) {
+      attachedHandlers.custom.forEach(({ element, handler }) => {
+        element.removeEventListener("click", handler);
+      });
+    }
+    attachedHandlers.custom = [];
 
-  // Match all elements that have floo-event-name=
-  document.querySelectorAll("[class*='floo-event-name=']").forEach((el) => {
-    // Extract event name (e.g. floo-event-name=Signup+Pro)
-    const match = el.className.match(/floo-event-name=([^\s]+)/);
-    const eventName = match
-      ? decodeURIComponent(match[1].replace(/\+/g, " "))
-      : null;
+    // Match all elements that have floo-event-name=
+    document.querySelectorAll("[class*='floo-event-name=']").forEach((el) => {
+      // Extract event name (e.g. floo-event-name=Signup+Pro)
+      const match = el.className.match(/floo-event-name=([^\s]+)/);
+      const eventName = match
+        ? decodeURIComponent(match[1].replace(/\+/g, " "))
+        : null;
 
-    if (!eventName) return;
+      if (!eventName) return;
 
-    const handler = (event) => {
-      // Optional: capture useful props
-      const props = {
-        text: el.innerText || el.value || null,
-        tag: el.tagName.toLowerCase(),
-        url: el.href || window.location.href,
+      const handler = (event) => {
+        // Optional: capture useful props
+        const props = {
+          text: el.innerText || el.value || null,
+          tag: el.tagName.toLowerCase(),
+          url: el.href || window.location.href,
+        };
+
+        events.push([
+          eventName,
+          {
+            ...pageInfo,
+            ...props,
+            timestamp: Date.now(),
+          },
+        ]);
+
+        // Send beacon immediately for custom events
+        setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
+        events.length = 0;
       };
 
-      events.push([
-        eventName,
-        {
-          ...pageInfo,
-          ...props,
-          timestamp: Date.now(),
-        },
-      ]);
+      el.addEventListener("click", handler);
+      attachedHandlers.custom.push({ element: el, handler });
+    });
+  }
 
-      // Send beacon immediately for custom events
-      setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
-      events.length = 0;
-    };
+  function initializeScrollDepth() {
+    const { scrollHeight } = document.documentElement;
+    const viewportHeight = window.innerHeight;
 
-    el.addEventListener("click", handler);
-    attachedHandlers.custom.push({ element: el, handler });
-  });
-}
+    maxScrollDepth = Math.min((viewportHeight / scrollHeight) * 100, 100);
+  }
+  function updateScrollDepth() {
+    const { scrollHeight } = document.documentElement;
+    const viewportHeight = window.innerHeight;
 
+    const currentScrollDepth =
+      scrollHeight === 0
+        ? null
+        : scrollHeight <= viewportHeight
+        ? 100 // Non-scrollable or fully visible page
+        : (Math.min(window.scrollY + viewportHeight, scrollHeight) /
+            scrollHeight) *
+          100;
+    maxScrollDepth = Math.min(
+      Math.max(maxScrollDepth, currentScrollDepth),
+      100
+    );
+  }
 
   function historyBasedTracking() {
     if (history) {
       handleExternalLink();
-      handleCustomEventElements()
+      handleCustomEventElements();
+      initializeScrollDepth();
       const originalPushState = history.pushState;
       history.pushState = function (...args) {
         const result = originalPushState.apply(history, args);
@@ -206,6 +233,7 @@
           "page_view",
           {
             ...pageInfo,
+            scroll_depth: maxScrollDepth,
             timestamp: Date.now(),
             time_spent: timeSpent ?? 0,
             viewport_height: document.documentElement.scrollHeight,
@@ -214,6 +242,7 @@
         ]);
         setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
         events.length = 0;
+        initializeScrollDepth();
         pageInfo = {
           host: window.location.hostname,
           path: window.location.pathname,
@@ -223,7 +252,11 @@
       });
     }
   }
-
+  if (document.readyState !== "loading") {
+    handleExternalLink();
+    handleCustomEventElements();
+  }
+  
   document.addEventListener("DOMContentLoaded", function () {
     let searchParams = new URLSearchParams(window.location.search);
     let searchParamsObj = Object.fromEntries(searchParams);
@@ -247,6 +280,7 @@
       "page_view",
       {
         ...pageInfo,
+        scroll_depth: maxScrollDepth,
         timestamp: Date.now(),
         time_spent: timeSpent ?? 0,
       },
