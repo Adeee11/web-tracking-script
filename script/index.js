@@ -9,6 +9,7 @@
     links: [],
     forms: [],
     downloads: [],
+    custom:[]
   };
 
   var trackFileExtensions = [
@@ -130,9 +131,57 @@
     });
   }
 
+  function handleCustomEventElements() {
+  // Remove old handlers
+  if (attachedHandlers.custom) {
+    attachedHandlers.custom.forEach(({ element, handler }) => {
+      element.removeEventListener("click", handler);
+    });
+  }
+  attachedHandlers.custom = [];
+
+  // Match all elements that have floo-event-name=
+  document.querySelectorAll("[class*='floo-event-name=']").forEach((el) => {
+    // Extract event name (e.g. floo-event-name=Signup+Pro)
+    const match = el.className.match(/floo-event-name=([^\s]+)/);
+    const eventName = match
+      ? decodeURIComponent(match[1].replace(/\+/g, " "))
+      : null;
+
+    if (!eventName) return;
+
+    const handler = (event) => {
+      // Optional: capture useful props
+      const props = {
+        text: el.innerText || el.value || null,
+        tag: el.tagName.toLowerCase(),
+        url: el.href || window.location.href,
+      };
+
+      events.push([
+        eventName,
+        {
+          ...pageInfo,
+          ...props,
+          timestamp: Date.now(),
+        },
+      ]);
+
+      // Send beacon immediately for custom events
+      setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
+      events.length = 0;
+    };
+
+    el.addEventListener("click", handler);
+    attachedHandlers.custom.push({ element: el, handler });
+  });
+}
+
+
   function historyBasedTracking() {
     if (history) {
       handleExternalLink();
+      handleCustomEventElements()
       const originalPushState = history.pushState;
       history.pushState = function (...args) {
         const result = originalPushState.apply(history, args);
@@ -180,6 +229,7 @@
     let searchParamsObj = Object.fromEntries(searchParams);
 
     handleExternalLink();
+    handleCustomEventElements();
 
     pageInfo = {
       host: window.location.hostname,
