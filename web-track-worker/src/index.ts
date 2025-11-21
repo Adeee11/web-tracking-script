@@ -330,7 +330,7 @@ export class PlanQuota implements DurableObject {
 		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
 			return new Response('ok', { status: 200 });
 		}
-
+		console.log("PLAN NAME",plan_name)
 		const plan = await this.env.PLANS.get(plan_name);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
