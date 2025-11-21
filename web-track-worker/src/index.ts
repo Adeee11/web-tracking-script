@@ -319,18 +319,20 @@ export class PlanQuota implements DurableObject {
 		this.env = env;
 	}
 	async fetch(request: Request): Promise<Response> {
-		const { event_type, action, plan_name, user_id } = await request.json<{
+		const x = await request.json<{
 			event_type: string;
 			action?: 'read' | 'increment';
 			plan_name: string;
 			user_id: string;
 		}>();
 
+		const { event_type, action, plan_name, user_id } = x
+
+		console.log("BODY",x)
 		// Only enforce quota for page_view,team_member_added or site_created events
 		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
 			return new Response('ok', { status: 200 });
 		}
-		console.log("PLAN NAME",plan_name)
 		const plan = await this.env.PLANS.get(plan_name);
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
