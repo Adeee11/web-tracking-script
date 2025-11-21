@@ -327,8 +327,10 @@ export class PlanQuota implements DurableObject {
 		}>();
 
 		const { event_type, action, plan_name, user_id } = x
-
-		console.log("BODY",x)
+		console.log("&&&&&&&&&&&&&&&&&")
+		console.log(x)
+		console.log("BODY")
+		console.log("****************")
 		// Only enforce quota for page_view,team_member_added or site_created events
 		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
 			return new Response('ok', { status: 200 });
