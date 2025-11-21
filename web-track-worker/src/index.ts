@@ -276,6 +276,8 @@ export default {
 		}
 
 		const rpc_data = (await res.json()) as { plan: string; subscription_id: string; created_by: string };
+		console.log("rpc data")
+		console.log(rpc_data)
 
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
