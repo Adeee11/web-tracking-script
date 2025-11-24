@@ -270,12 +270,14 @@ export default {
 			body: JSON.stringify({ site_id_param: site_id }),
 		});
 
+		console.log("res",res)
+
 		if (!res.ok) {
 			console.error('RPC call failed:', await res.text());
 			return new Response('error', { status: 400 });
 		}
 
-		const rpc_data = (await res.json()) as { plan: string; subscription_id: string; created_by: string };
+		const rpc_data = (await res.json()) as { plan_name: string; subscription_id: string; created_by: string };
 		console.log("rpc data")
 		console.log(rpc_data)
 		console.log(site_id)
@@ -291,7 +293,7 @@ export default {
 				body: JSON.stringify({
 					event_type: event,
 					user_id: rpc_data.created_by,
-					plan_name: rpc_data.plan,
+					plan_name: rpc_data.plan_name,
 				}),
 			});
 
@@ -331,7 +333,7 @@ export class PlanQuota implements DurableObject {
 
 		const { event_type, action, plan_name, user_id } = x
 		console.log("&&&&&&&&&&&&&&&&&")
-		console.log(x)
+		console.log(x,plan_name)
 		console.log("BODY")
 		console.log("****************")
 		// Only enforce quota for page_view,team_member_added or site_created events
