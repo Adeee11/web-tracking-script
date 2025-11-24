@@ -216,7 +216,7 @@ export default {
 			});
 			const resp = await quotaRes.text();
 
-			return new Response(JSON.stringify(resp),{status:quotaRes.status});
+			return new Response(JSON.stringify(resp), { status: quotaRes.status });
 		}
 
 		const currentDate = new Date().toISOString().split('T')[0];
@@ -270,17 +270,12 @@ export default {
 			body: JSON.stringify({ site_id_param: site_id }),
 		});
 
-		console.log("res",res)
-
 		if (!res.ok) {
 			console.error('RPC call failed:', await res.text());
 			return new Response('error', { status: 400 });
 		}
 
 		const rpc_data = (await res.json()) as { plan_name: string; subscription_id: string; created_by: string };
-		console.log("rpc data")
-		console.log(rpc_data)
-		console.log(site_id)
 
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
@@ -324,18 +319,13 @@ export class PlanQuota implements DurableObject {
 		this.env = env;
 	}
 	async fetch(request: Request): Promise<Response> {
-		const x = await request.json<{
+		const { event_type, action, plan_name, user_id } = await request.json<{
 			event_type: string;
 			action?: 'read' | 'increment';
 			plan_name: string;
 			user_id: string;
 		}>();
 
-		const { event_type, action, plan_name, user_id } = x
-		console.log("&&&&&&&&&&&&&&&&&")
-		console.log(x,plan_name)
-		console.log("BODY")
-		console.log("****************")
 		// Only enforce quota for page_view,team_member_added or site_created events
 		if (event_type !== 'team_member_added' && event_type !== 'page_view' && event_type !== 'site_created') {
 			return new Response('ok', { status: 200 });
@@ -367,7 +357,6 @@ export class PlanQuota implements DurableObject {
 			);
 		}
 
-		
 		// Handle incrementing each event type
 		switch (event_type) {
 			case 'page_view':
