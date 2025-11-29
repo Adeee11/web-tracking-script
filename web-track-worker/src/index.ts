@@ -150,10 +150,10 @@ export default {
 
 		if (pathname === '/add-plan') {
 			await env.PLANS.put(
-				'business',
+				'starter pro',
 				JSON.stringify({
 					max_page_views: 10000,
-					max_sites: 1_000_000_000,
+					max_sites: 25,
 					max_team_members: 10,
 				})
 			);
@@ -212,8 +212,6 @@ export default {
 			const id = env.USER_QUOTA.idFromName(user_id);
 			const obj = env.USER_QUOTA.get(id);
 
-			console.log("obj",obj)
-
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
 				body: JSON.stringify({
@@ -224,7 +222,6 @@ export default {
 				}),
 			});
 			const resp = await quotaRes.json();
-			console.log("resp",resp)
 
 			return new Response(JSON.stringify(resp));
 		}
@@ -367,7 +364,6 @@ export class PlanQuota implements DurableObject {
 			return new Response('ok', { status: 200 });
 		}
 		const plan = await this.env.PLANS.get(plan_name);
-		console.log("plan",plan)
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
