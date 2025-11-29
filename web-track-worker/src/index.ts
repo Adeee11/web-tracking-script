@@ -15,13 +15,16 @@ import { sign } from '@tsndr/cloudflare-worker-jwt';
 import { env } from 'cloudflare:workers';
 
 function withCors(response: Response): Response {
-	const headers = new Headers(response.headers);
-	headers.set('Access-Control-Allow-Origin', '*');
-	headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-	headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	const newHeaders = new Headers(response.headers);
+
+	newHeaders.set('Access-Control-Allow-Origin', '*');
+	newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+	newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
 	return new Response(response.body, {
-		...response,
-		headers,
+		status: response.status,
+		statusText: response.statusText,
+		headers: newHeaders,
 	});
 }
 
@@ -79,16 +82,16 @@ async function addData(
 	env: Env,
 	accessToken: string,
 	datasetId: string,
-	arr: { event_type: string; json: { [x: string]: any } }[]
+	arr: { event_type: string; json: { [x: string]: any }; timestamp?: string }[]
 ): Promise<Response> {
 	const tableId = 'events';
 	const url = `https://bigquery.googleapis.com/bigquery/v2/projects/${env.PROJECT_ID}/datasets/${datasetId}/tables/${tableId}/insertAll`;
 
-	const rows = arr.map(({ event_type, json }) => ({
+	const rows = arr.map(({ event_type, json, timestamp }) => ({
 		json: {
 			event_type,
 			data: JSON.stringify(json),
-			timestamp: new Date().toISOString(),
+			timestamp: timestamp ?? new Date().toISOString(),
 		},
 	}));
 	const payload = { rows };
@@ -113,6 +116,36 @@ export default {
 		// Handle GET request to root path
 		if (method === 'GET' && new URL(url).pathname === '/') {
 			return Response.redirect('https://flooanalytics.com/', 301);
+		}
+		if (request.method === 'OPTIONS') {
+			return withCors(new Response(null, { status: 204 }));
+		}
+
+		if (pathname.match(/^\/([^\/]+)\/import\/?$/)) {
+			const match = pathname.match(/^\/([^\/]+)\/import\/?$/);
+
+			if (!match) {
+				return new Response('Invalid route', { status: 404 });
+			}
+
+			
+
+			const site_id = match[1];
+			const body = await request.json();
+			const access_token = await generateBQAccessToken(env);
+			console.log("BODY")
+			console.log(body)
+			//@ts-ignore
+			const arr = body.map(({event_type,timestamp,...rest})=>({
+				event_type,
+				timestamp,
+				json:{
+					...rest
+				}
+			}))
+			
+			await addData(request, env, access_token, `site_${site_id}`, arr);
+			return withCors(new Response(`Data imported for site_id : ${site_id}`, { status: 200 }));
 		}
 
 		if (pathname === '/add-plan') {
@@ -179,6 +212,8 @@ export default {
 			const id = env.USER_QUOTA.idFromName(user_id);
 			const obj = env.USER_QUOTA.get(id);
 
+			console.log("obj",obj)
+
 			const quotaRes = await obj.fetch('https://quota/check', {
 				method: 'POST',
 				body: JSON.stringify({
@@ -189,6 +224,7 @@ export default {
 				}),
 			});
 			const resp = await quotaRes.json();
+			console.log("resp",resp)
 
 			return new Response(JSON.stringify(resp));
 		}
@@ -331,6 +367,7 @@ export class PlanQuota implements DurableObject {
 			return new Response('ok', { status: 200 });
 		}
 		const plan = await this.env.PLANS.get(plan_name);
+		console.log("plan",plan)
 		const plan_data = JSON.parse(plan!) as { max_page_views: number; max_sites: number; max_team_members: number };
 
 		const now = new Date();
