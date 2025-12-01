@@ -328,6 +328,7 @@ export default {
 			if (quotaRes.status === 429 || quotaRes.status === 400) {
 				return quotaRes;
 			}
+			console.log("path",data.path)
 			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
 			const payload = {
 				event_type: event,
