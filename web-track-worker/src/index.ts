@@ -336,7 +336,9 @@ export default {
 					},
 					body: JSON.stringify({ _site_id: site_id, _path: path }),
 				});
-				console.log('upsertSite', upsertSite.json());
+				  const upsertSiteData = await upsertSite.json();
+
+  console.log('upsertSite', upsertSiteData);
 			}
 			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
 			const payload = {
