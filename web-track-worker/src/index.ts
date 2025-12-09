@@ -300,14 +300,14 @@ export default {
 			},
 			body: JSON.stringify({ site_id_param: site_id }),
 		});
-		console.log('get_user_plan_by_site', res);
+		
 		if (!res.ok) {
 			console.error('RPC call failed:', await res.text());
 			return new Response('error', { status: 400 });
 		}
 
 		const rpc_data = (await res.json()) as { plan_name: string; subscription_id: string; created_by: string };
-
+console.log('rpc_data', rpc_data);
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
 			// Ask the Durable Object to check quota
