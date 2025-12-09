@@ -128,22 +128,20 @@ export default {
 				return new Response('Invalid route', { status: 404 });
 			}
 
-			
-
 			const site_id = match[1];
 			const body = await request.json();
 			const access_token = await generateBQAccessToken(env);
-			console.log("BODY")
-			console.log(body)
+			console.log('BODY');
+			console.log(body);
 			//@ts-ignore
-			const arr = body.map(({event_type,timestamp,...rest})=>({
+			const arr = body.map(({ event_type, timestamp, ...rest }) => ({
 				event_type,
 				timestamp,
-				json:{
-					...rest
-				}
-			}))
-			
+				json: {
+					...rest,
+				},
+			}));
+
 			await addData(request, env, access_token, `site_${site_id}`, arr);
 			return withCors(new Response(`Data imported for site_id : ${site_id}`, { status: 200 }));
 		}
@@ -302,7 +300,7 @@ export default {
 			},
 			body: JSON.stringify({ site_id_param: site_id }),
 		});
-
+		console.log('get_user_plan_by_site', res);
 		if (!res.ok) {
 			console.error('RPC call failed:', await res.text());
 			return new Response('error', { status: 400 });
@@ -328,15 +326,15 @@ export default {
 			if (quotaRes.status === 429 || quotaRes.status === 400) {
 				return quotaRes;
 			}
-			const {path} = data
-			if(path){
-					await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upsert_site_path`, {
+			const { path } = data;
+			if (path) {
+				await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upsert_site_path`, {
 					method: 'POST',
 					headers: {
 						apikey: env.SUPABASE_KEY,
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({ _site_id: site_id,_path:path }),
+					body: JSON.stringify({ _site_id: site_id, _path: path }),
 				});
 			}
 			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
