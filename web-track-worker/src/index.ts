@@ -330,7 +330,7 @@ export default {
 			}
 			const {path} = data
 			if(path){
-					await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/get_user_plan_by_site`, {
+					await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upsert_site_path`, {
 					method: 'POST',
 					headers: {
 						apikey: env.SUPABASE_KEY,
