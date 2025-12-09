@@ -307,7 +307,7 @@ export default {
 		}
 
 		const rpc_data = (await res.json()) as { plan_name: string; subscription_id: string; created_by: string };
-console.log('rpc_data', rpc_data);
+
 		for (var i = 0; i < events.length; i++) {
 			const [event, data] = events[i];
 			// Ask the Durable Object to check quota
@@ -328,7 +328,7 @@ console.log('rpc_data', rpc_data);
 			}
 			const { path } = data;
 			if (path) {
-				await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upsert_site_path`, {
+			const upsertSite=	await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/upsert_site_path`, {
 					method: 'POST',
 					headers: {
 						apikey: env.SUPABASE_KEY,
@@ -336,6 +336,7 @@ console.log('rpc_data', rpc_data);
 					},
 					body: JSON.stringify({ _site_id: site_id, _path: path }),
 				});
+				console.log('upsertSite', upsertSite);
 			}
 			const formattedData = { ...data, browser, user_agent: userAgent, country_code, city, region, device_type, session_id, visitor_id };
 			const payload = {
