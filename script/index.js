@@ -60,6 +60,7 @@
     data.cid = Math.floor(1e8 * Math.random()) + 1;
     data.sid = siteId;
     const searchParams = new URLSearchParams(data).toString();
+
     const url = "https://track.flooanalytics.com" + "?" + searchParams;
 
     navigator.sendBeacon(url);
@@ -151,6 +152,7 @@
         ? decodeURIComponent(match[1].replace(/\+/g, " "))
         : null;
 
+
       if (!eventName) return;
 
       const handler = (event) => {
@@ -171,8 +173,12 @@
         ]);
 
         // Send beacon immediately for custom events
-        setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
-        events.length = 0;
+        setTimeout(() => {
+          sendAnalyticsBeacon({ events: events.slice() })
+          events.length = 0;
+        }, 0);
+        
+
       };
 
       el.addEventListener("click", handler);
