@@ -131,8 +131,6 @@ export default {
 			const site_id = match[1];
 			const body = await request.json();
 			const access_token = await generateBQAccessToken(env);
-			console.log('BODY');
-			console.log(body);
 			//@ts-ignore
 			const arr = body.map(({ event_type, timestamp, ...rest }) => ({
 				event_type,
