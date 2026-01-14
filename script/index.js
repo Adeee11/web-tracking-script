@@ -42,6 +42,33 @@
     "dmg",
   ];
 
+  function handleFormSubmit() {
+    const getFormName = (form) => {
+      if (form.getAttribute('id')) return form.getAttribute('id')
+      else if (form.getAttribute('name')) return form.getAttribute('name')
+      else return `Form on ${window.location.pathname}`
+    }
+    // Remove old handlers
+    attachedHandlers.forms.forEach(({ element, handler }) => {
+      element.removeEventListener('submit', handler)
+    })
+    attachedHandlers.forms = []
+    document.querySelectorAll('form').forEach((form) => {
+      const handler = function (event) {
+        const form_name = getFormName(form)
+        events.push([
+          'form_submit',
+          {
+            ...pageInfo,
+            form_name,
+          },
+        ])
+      }
+      form.addEventListener('submit', handler)
+      attachedHandlers.forms.push({ element: form, handler })
+    })
+  }
+
   function isTrackingEnabled() {
     const { hostname, pathname } = window.location;
     return (
@@ -177,7 +204,7 @@
           sendAnalyticsBeacon({ events: events.slice() })
           events.length = 0;
         }, 0);
-        
+
 
       };
 
@@ -200,8 +227,8 @@
       scrollHeight === 0
         ? null
         : scrollHeight <= viewportHeight
-        ? 100 // Non-scrollable or fully visible page
-        : (Math.min(window.scrollY + viewportHeight, scrollHeight) /
+          ? 100 // Non-scrollable or fully visible page
+          : (Math.min(window.scrollY + viewportHeight, scrollHeight) /
             scrollHeight) *
           100;
     maxScrollDepth = Math.min(
@@ -213,6 +240,7 @@
   function historyBasedTracking() {
     if (history) {
       handleExternalLink();
+      handleFormSubmit()
       handleCustomEventElements();
       initializeScrollDepth();
       const originalPushState = history.pushState;
@@ -260,14 +288,16 @@
   }
   if (document.readyState !== "loading") {
     handleExternalLink();
+    handleFormSubmit()
     handleCustomEventElements();
   }
-  
+
   document.addEventListener("DOMContentLoaded", function () {
     let searchParams = new URLSearchParams(window.location.search);
     let searchParamsObj = Object.fromEntries(searchParams);
 
     handleExternalLink();
+    handleFormSubmit()
     handleCustomEventElements();
 
     pageInfo = {
