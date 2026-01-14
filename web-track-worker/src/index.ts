@@ -146,7 +146,7 @@ export default {
 
 		if (pathname === '/add-plan') {
 			await env.PLANS.put(
-				'starter pro',
+				'scale',
 				JSON.stringify({
 					max_page_views: 10000,
 					max_sites: 25,
