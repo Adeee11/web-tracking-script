@@ -77,8 +77,12 @@
   }
 
   function sendAnalyticsBeacon(data) {
-    if (!isTrackingEnabled()) return;
+    if (!isTrackingEnabled()) {
+      console.log("tracking not enabled")  
+      return
+    };
     if (!data.events || data.events.length === 0) {
+      console.log("exiting prematurely , events empty")
       return;
     }
     const events = data.events;
