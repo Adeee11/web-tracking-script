@@ -278,8 +278,9 @@
             viewport_width: document.documentElement.clientWidth,
           },
         ]);
-        setTimeout(() => sendAnalyticsBeacon({ events: events.slice() }), 0);
+        const eventsCopy = events.slice();
         events.length = 0;
+        setTimeout(() => sendAnalyticsBeacon({ events: eventsCopy }), 0);
         initializeScrollDepth();
         pageInfo = {
           host: window.location.hostname,
