@@ -77,6 +77,36 @@ async function hashSessionId(fingerprint: string) {
 	return hashHex;
 }
 
+function parseJsonObject(raw: string | null): Record<string, unknown> {
+	if (!raw) return {};
+	try {
+		const parsed = JSON.parse(raw);
+		return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+	} catch {
+		return {};
+	}
+}
+
+function normalizeIpList(value: unknown): string[] {
+	if (!value) return [];
+	if (Array.isArray(value)) {
+		return value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(/[,\s]+/)
+			.map((item) => item.trim())
+			.filter(Boolean);
+	}
+	return [];
+}
+
+function isIpBlocked(settings: Record<string, unknown>, ip: string): boolean {
+	if (!ip || ip === 'UNKNOWN_IP') return false;
+	const blockedIps = normalizeIpList(settings.blocked_ips ?? settings.blockedIps);
+	return blockedIps.includes(ip);
+}
+
 async function addData(
 	request: Request,
 	env: Env,
@@ -256,6 +286,16 @@ export default {
 		}
 		const userAgent = request.headers.get('User-Agent') ?? '';
 		const cfIp = request.headers.get('cf-connecting-ip') ?? 'UNKNOWN_IP';
+		const globalSettings = parseJsonObject(await env.SITE_SETTINGS.get('site:settings:global'));
+		if (isIpBlocked(globalSettings, cfIp)) {
+			return new Response('OK', { status: 200 });
+		}
+
+		const settingsKey = `site:settings:${site_id}`;
+		const siteSettings = parseJsonObject(await env.SITE_SETTINGS.get(settingsKey));
+		if (isIpBlocked(siteSettings, cfIp)) {
+			return new Response('OK', { status: 200 });
+		}
 		const acceptLang = request.headers.get('Accept-Language') ?? '';
 		const acceptEnc = request.headers.get('Accept-Encoding') ?? '';
 		const fingerprint = cfIp + userAgent + acceptLang + acceptEnc;
